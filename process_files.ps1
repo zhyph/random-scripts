@@ -65,7 +65,7 @@ function Write-Log {
 }
 
 try {    
-    filebot -script fn:amc --output "E:\Media" --action hardlink -non-strict --def skipExtract=n --def deleteAfterExtract=n --def excludeList=amc.txt --def extractFolder="E:\Torrents\Extracted" --def clean=y --def animeDB=TheMovieDB::TV movieDB=TheMovieDB seriesDB=TheMovieDB::TV musicDB=ID3 --def subtitles="en,pob" --log-file="E:\Media\AMC-log.txt" --conflict auto --def seriesFormat="{anime ? 'Anime' : 'TV Shows'}/{~plex.id}" movieFormat="{anime ? 'Anime Movies' : 'Movies'}/{~plex.id}" --def "ut_label=$label" "ut_title=$title" "ut_kind=multi" "ut_dir=$dir" --def plex=localhost:32400:$env:PLEX_TOKEN
+    filebot -script fn:amc --output "E:\Media" --action hardlink -non-strict --def skipExtract=n --def deleteAfterExtract=n --def excludeList="E:\Media\amc.txt" --def extractFolder="E:\Torrents\Extracted" --def clean=y --def animeDB=TheMovieDB::TV movieDB=TheMovieDB seriesDB=TheMovieDB::TV musicDB=ID3 --def subtitles="en,pob" --log-file="E:\Media\AMC-log.txt" --conflict auto --def seriesFormat="{anime ? 'Anime' : 'TV Shows'}/{~plex.id}" movieFormat="{anime ? 'Anime Movies' : 'Movies'}/{~plex.id}" --def "ut_label=$label" "ut_title=$title" "ut_kind=multi" "ut_dir=$dir" --def plex=localhost:32400:$env:PLEX_TOKEN
 
     $mediaFiles = Get-ChildItem "E:\Media\" -Recurse -File -Include "*.mp4", "*.mkv", "*.mov", "*.wmv", "*.avi", "*.flv", "*.avchd"
     
@@ -92,7 +92,7 @@ try {
         }
     }
 
-    pwsh -NoProfile E:\Media\rename_ext.ps1 E:\Media\ pob pt
+    pwsh -NoProfile E:\Media\scripts\rename_ext.ps1 E:\Media\ pob pt
 }
 catch {
     Write-Log "Error: $_"
