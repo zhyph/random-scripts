@@ -87,7 +87,7 @@ try {
         if ("$($file.BaseName).pt.srt" -notin $srtFiles) {
             filebot -script fn:suball "$($fileFullName)" -non-strict --def maxAgeDays=1 --lang pob --log-file="E:\Media\AMC-log.txt"
         }
-        if ("$($file.BaseName).en.srt" -notin (Get-ChildItem $file.DirectoryName -File -Include "*.srt").Name) {
+        if ("$($file.BaseName).en.srt" -notin $srtFiles) {
             filebot -script fn:suball "$($fileFullName)" -non-strict --def maxAgeDays=1 --lang eng --log-file="E:\Media\AMC-log.txt"
         }
     }
