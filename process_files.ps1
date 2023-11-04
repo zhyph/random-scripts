@@ -8,7 +8,22 @@ param (
     [string]$dir
 )
 
-Get-Content .env | ForEach-Object {
+$languages = @("pt", "en")
+
+$langs_to_search = @{
+    "en" = @("en")
+    "pt" = @("por", "pob")
+}
+
+$lang_map = @{
+    "en" = @("eng", "en", "English")
+    "pt" = @("por", "pt", "Portuguese")
+}
+
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+$envPath = Join-Path $scriptPath ".env"
+
+Get-Content $envPath | ForEach-Object {
     $name, $value = $_.split('=')
     if ([string]::IsNullOrWhiteSpace($name) || $name.Contains('#')) {
         continue
@@ -65,7 +80,7 @@ function Write-Log {
 }
 
 try {    
-    filebot -script fn:amc --output "E:\Media" --action hardlink -non-strict --def skipExtract=n --def deleteAfterExtract=n --def excludeList="E:\Media\amc.txt" --def extractFolder="E:\Torrents\Extracted" --def clean=y --def animeDB=TheMovieDB::TV movieDB=TheMovieDB seriesDB=TheMovieDB::TV musicDB=ID3 --def subtitles="en,pob" --log-file="E:\Media\AMC-log.txt" --conflict auto --def seriesFormat="{anime ? 'Anime' : 'TV Shows'}/{~plex.id}" movieFormat="{anime ? 'Anime Movies' : 'Movies'}/{~plex.id}" --def "ut_label=$label" "ut_title=$title" "ut_kind=multi" "ut_dir=$dir" --def plex=localhost:32400:$env:PLEX_TOKEN
+    filebot -script fn:amc --output "E:\Media" --action hardlink -non-strict --def skipExtract=n --def deleteAfterExtract=n --def excludeList="E:\Media\amc.txt" --def extractFolder="E:\Torrents\Extracted" --def clean=y --def animeDB=TheTVDB movieDB=TheMovieDB seriesDB=TheTVDB musicDB=ID3 --log-file="E:\Media\AMC-log.txt" --conflict override --def seriesFormat="{anime ? 'Anime' : 'TV Shows'}/{~plex.id}" movieFormat="{anime ? 'Anime Movies' : 'Movies'}/{~plex.id}" --def ut_label=$label ut_title=$title ut_kind=multi ut_dir="$dir" --def plex=localhost:32400:$env:PLEX_TOKEN
 
     $mediaFiles = Get-ChildItem "E:\Media\" -Recurse -File -Include "*.mp4", "*.mkv", "*.mov", "*.wmv", "*.avi", "*.flv", "*.avchd"
     
@@ -80,19 +95,36 @@ try {
         if ($ignoreList -contains $fileFullName) {
             continue
         }
-
+        
+        $available_sub_langs = ffprobe -loglevel error -select_streams s -show_entries stream=index:stream_tags=language -of csv=p=0 "$($fileFullName)" | ConvertFrom-Csv -Header Index, Language
+        
         Add-Content -Path "E:\Media\sub-ignore.txt" -Value "$($fileFullName)"
-        $srtFiles = (Get-ChildItem $file.DirectoryName -File -Include "*.srt").Name
+        $srtFiles = (Get-ChildItem $file.DirectoryName -File -Include "*.srt" -Recurse).Name
 
-        if ("$($file.BaseName).pt.srt" -notin $srtFiles) {
-            filebot -script fn:suball "$($fileFullName)" -non-strict --def maxAgeDays=1 --lang pob --log-file="E:\Media\AMC-log.txt"
-        }
-        if ("$($file.BaseName).en.srt" -notin $srtFiles) {
-            filebot -script fn:suball "$($fileFullName)" -non-strict --def maxAgeDays=1 --lang eng --log-file="E:\Media\AMC-log.txt"
+        foreach ($lang in $languages) {
+            [bool] $hasSub = $false
+
+            foreach ($mapped_lang in $lang_map[$lang]) { 
+                if ($available_sub_langs.Language -contains $mapped_lang) {
+                    $hasSub = $true
+                } 
+            }
+
+            if ($hasSub) {
+                continue
+            }
+           
+            if ("$($file.BaseName).$lang.srt" -notin $srtFiles) { 
+                Write-Host "Searching for subtitles for $lang for $fileFullName"
+                foreach ($sub_lang in $langs_to_search[$lang]) {
+                    filebot -script fn:suball "$($fileFullName)" -non-strict --def maxAgeDays=1 --lang $sub_lang --log-file="E:\Media\AMC-log.txt"
+                }
+            }
         }
     }
 
-    pwsh -NoProfile E:\Media\scripts\rename_ext.ps1 E:\Media\ pob pt
+    pwsh -NoProfile $scriptPath\rename_ext.ps1 E:\Media\ por pt
+    pwsh -NoProfile $scriptPath\rename_ext.ps1 E:\Media\ pob "pt-BR"
 }
 catch {
     Write-Log "Error: $_"
